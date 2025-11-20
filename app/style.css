@@ -1,0 +1,29 @@
+body {
+  margin: 0;
+  background: black;
+  overflow: hidden;
+  font-family: sans-serif;
+}
+
+#startAR {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 16px 28px;
+  background: cyan;
+  border: none;
+  color: black;
+  font-size: 20px;
+  border-radius: 14px;
+  z-index: 10;
+}
+
+#status {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  color: cyan;
+  font-size: 18px;
+  z-index: 10;
+}

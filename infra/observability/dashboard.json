@@ -1,0 +1,251 @@
+{
+  "dashboard": {
+    "title": "SmartPick AI Observability",
+    "tags": ["smartpick", "production"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP Request Rate (RED)",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{service=\"smartpick-backend\"}[5m])) by (method, route)",
+            "legendFormat": "{{method}} {{route}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "reqps", "label": "Requests/sec" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "HTTP Error Rate",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(http_request_errors_total{service=\"smartpick-backend\"}[5m])) by (error_type)",
+            "legendFormat": "{{error_type}} errors",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "reqps", "label": "Errors/sec" },
+          { "format": "short" }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": { "params": [10], "type": "gt" },
+              "operator": { "type": "and" },
+              "query": { "params": ["A", "5m", "now"] },
+              "reducer": { "params": [], "type": "avg" },
+              "type": "query"
+            }
+          ],
+          "name": "High Error Rate"
+        }
+      },
+      {
+        "id": 3,
+        "title": "HTTP Request Duration (p50, p95, p99)",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{service=\"smartpick-backend\"}[5m])) by (le, route))",
+            "legendFormat": "p50 {{route}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"smartpick-backend\"}[5m])) by (le, route))",
+            "legendFormat": "p95 {{route}}",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{service=\"smartpick-backend\"}[5m])) by (le, route))",
+            "legendFormat": "p99 {{route}}",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          { "format": "s", "label": "Duration" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Active WebSocket Connections",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "websocket_connections_active{service=\"smartpick-backend\"}",
+            "legendFormat": "Active connections",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Connections" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Alerts Created Rate",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(alerts_created_total{service=\"smartpick-backend\"}[5m])) by (alert_type, severity)",
+            "legendFormat": "{{alert_type}} ({{severity}})",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Alerts/sec" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Risk Score Distribution",
+        "type": "heatmap",
+        "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(risk_score_distribution_bucket{service=\"smartpick-backend\"}[5m])) by (le)",
+            "format": "heatmap",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Database Query Duration (p95)",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket{service=\"smartpick-backend\"}[5m])) by (le, operation))",
+            "legendFormat": "p95 {{operation}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "s", "label": "Duration" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Queue Depth",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "queue_depth{service=\"smartpick-backend\"}",
+            "legendFormat": "Queue depth",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Messages" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Vision Service - Inference Duration",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(inference_duration_seconds_bucket{service=\"smartpick-vision\"}[5m])) by (le, model))",
+            "legendFormat": "p95 {{model}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "s", "label": "Duration" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Vision Service - Inference Rate & Errors",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(inference_requests_total{service=\"smartpick-vision\"}[5m])) by (model)",
+            "legendFormat": "{{model}} requests",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(inference_errors_total{service=\"smartpick-vision\"}[5m])) by (model, error_type)",
+            "legendFormat": "{{model}} errors ({{error_type}})",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          { "format": "reqps", "label": "Requests/sec" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "AI Inference Tokens Usage",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 40, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(ai_inference_tokens_sum{service=\"smartpick-backend\"}[5m])) by (model)",
+            "legendFormat": "{{model}} tokens/sec",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Tokens/sec" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Processing Lag",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 40, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "processing_lag_seconds{service=\"smartpick-backend\"}",
+            "legendFormat": "Processing lag",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "s", "label": "Lag" },
+          { "format": "short" }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": { "params": [30], "type": "gt" },
+              "operator": { "type": "and" },
+              "query": { "params": ["A", "5m", "now"] },
+              "reducer": { "params": [], "type": "avg" },
+              "type": "query"
+            }
+          ],
+          "name": "High Processing Lag"
+        }
+      }
+    ]
+  }
+}

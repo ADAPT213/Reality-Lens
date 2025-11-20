@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: smartpick-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - LOG_LEVEL=info
+    networks:
+      - smartpick-observability
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: smartpick-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - smartpick-observability
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: smartpick-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./dashboard.json:/var/lib/grafana/dashboards/smartpick.json
+    depends_on:
+      - prometheus
+      - jaeger
+    networks:
+      - smartpick-observability
+
+  # Optional: OpenTelemetry Collector for advanced routing/processing
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    container_name: smartpick-otel-collector
+    ports:
+      - "4317:4317"    # OTLP gRPC (if not using Jaeger directly)
+      - "4318:4318"    # OTLP HTTP (if not using Jaeger directly)
+      - "8888:8888"    # Prometheus metrics from collector
+      - "8889:8889"    # Prometheus exporter
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    command: ["--config=/etc/otel-collector-config.yml"]
+    depends_on:
+      - jaeger
+      - prometheus
+    networks:
+      - smartpick-observability
+    profiles:
+      - full  # Only start with --profile full
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  smartpick-observability:
+    driver: bridge

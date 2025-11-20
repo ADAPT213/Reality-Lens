@@ -1,0 +1,537 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SAFETY_OFFICER
+  SUPERVISOR
+  OPERATOR
+  INVENTORY_MANAGER
+  WAREHOUSE_MANAGER
+}
+
+enum Permission {
+  VIEW_ALL_WAREHOUSES
+  MANAGE_WAREHOUSES
+  VIEW_ALL_ZONES
+  MANAGE_ZONES
+  VIEW_ALL_ALERTS
+  MANAGE_ALERTS
+  ACKNOWLEDGE_ALERTS
+  VIEW_ALL_METRICS
+  VIEW_OWN_METRICS
+  MANAGE_USERS
+  MANAGE_RULES
+  VIEW_REPORTS
+  EXPORT_DATA
+}
+
+model Warehouse {
+  id                 String              @id @default(uuid())
+  name               String
+  code               String              @unique
+  timezone           String              @default("UTC")
+  retentionDays      Int                 @default(90) @map("retention_days")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  zones              Zone[]
+  skus               Sku[]
+  uploads            Upload[]
+  ergonomicSnapshots ErgonomicSnapshot[]
+  alerts             Alert[]
+  shiftSnapshots     ShiftSnapshot[]
+  userWarehouses     UserWarehouse[]
+
+  @@map("warehouses")
+}
+
+model Zone {
+  id                 String              @id @default(uuid())
+  warehouseId        String              @map("warehouse_id")
+  warehouse          Warehouse           @relation(fields: [warehouseId], references: [id])
+  name               String
+  code               String
+  description        String?
+  createdAt          DateTime            @default(now()) @map("created_at")
+  pickLocations      PickLocation[]
+  uploads            Upload[]
+  ergonomicSnapshots ErgonomicSnapshot[]
+  alerts             Alert[]
+  userZones          UserZone[]
+
+  @@map("zones")
+}
+
+model PickLocation {
+  id                 String              @id @default(uuid())
+  zoneId             String              @map("zone_id")
+  zone               Zone                @relation(fields: [zoneId], references: [id])
+  label              String
+  xCoord             Decimal?            @map("x_coord")
+  yCoord             Decimal?            @map("y_coord")
+  zHeightCm          Decimal?            @map("z_height_cm")
+  reachBand          String?             @map("reach_band")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  assignments        Assignment[]
+  ergonomicSnapshots ErgonomicSnapshot[]
+
+  @@map("pick_locations")
+}
+
+model User {
+  id                 String          @id @default(uuid())
+  email              String          @unique
+  passwordHash       String?         @map("password_hash")
+  firstName          String?         @map("first_name")
+  lastName           String?         @map("last_name")
+  isActive           Boolean         @default(true) @map("is_active")
+  lastLoginAt        DateTime?       @map("last_login_at")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime?       @updatedAt @map("updated_at")
+  uploads            Upload[]
+  acknowledgedAlerts Alert[]
+  roles              UserRole[]
+  warehouses         UserWarehouse[]
+  zones              UserZone[]
+  refreshTokens      RefreshToken[]
+
+  @@map("users")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("user_roles")
+}
+
+model UserWarehouse {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  warehouseId String    @map("warehouse_id")
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([userId, warehouseId])
+  @@index([userId])
+  @@index([warehouseId])
+  @@map("user_warehouses")
+}
+
+model UserZone {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  zoneId    String   @map("zone_id")
+  zone      Zone     @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, zoneId])
+  @@index([userId])
+  @@index([zoneId])
+  @@map("user_zones")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model Sku {
+  id          String       @id @default(uuid())
+  warehouseId String       @map("warehouse_id")
+  warehouse   Warehouse    @relation(fields: [warehouseId], references: [id])
+  skuCode     String       @map("sku_code")
+  description String?
+  weightKg    Decimal?     @map("weight_kg")
+  volumeCm3   Decimal?     @map("volume_cm3")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  assignments Assignment[]
+
+  @@map("skus")
+}
+
+model Assignment {
+  id              String       @id @default(uuid())
+  pickLocationId  String       @map("pick_location_id")
+  pickLocation    PickLocation @relation(fields: [pickLocationId], references: [id])
+  skuId           String       @map("sku_id")
+  sku             Sku          @relation(fields: [skuId], references: [id])
+  fromTs          DateTime     @map("from_ts")
+  toTs            DateTime?    @map("to_ts")
+  avgPicksPerHour Decimal?     @map("avg_picks_per_hour")
+
+  @@map("assignments")
+}
+
+model Upload {
+  id                 String              @id @default(uuid())
+  warehouseId        String?             @map("warehouse_id")
+  warehouse          Warehouse?          @relation(fields: [warehouseId], references: [id])
+  zoneId             String?             @map("zone_id")
+  zone               Zone?               @relation(fields: [zoneId], references: [id])
+  uploadedBy         String?             @map("uploaded_by")
+  user               User?               @relation(fields: [uploadedBy], references: [id])
+  kind               String
+  originalName       String              @map("original_name")
+  storageKey         String              @map("storage_key")
+  status             String
+  createdAt          DateTime            @default(now()) @map("created_at")
+  ergonomicSnapshots ErgonomicSnapshot[]
+
+  @@map("uploads")
+}
+
+/// TimescaleDB: Hypertable partitioned by event_time (timestamp)
+/// Postgres fallback: Native partitioning by RANGE(event_time)
+/// Retention: Managed per warehouse.retention_days
+model ErgonomicSnapshot {
+  id               String        @id @default(uuid())
+  warehouseId      String?       @map("warehouse_id")
+  warehouse        Warehouse?    @relation(fields: [warehouseId], references: [id])
+  zoneId           String?       @map("zone_id")
+  zone             Zone?         @relation(fields: [zoneId], references: [id])
+  pickLocationId   String?       @map("pick_location_id")
+  pickLocation     PickLocation? @relation(fields: [pickLocationId], references: [id])
+  shiftCode        String?       @map("shift_code")
+  eventTime        DateTime      @map("event_time")
+  timestamp        DateTime
+  cameraId         String?       @map("camera_id")
+  workerId         String?       @map("worker_id")
+  modelVersion     String?       @map("model_version")
+  riskScore        Decimal?      @map("risk_score")
+  postureKeypoints Json?         @map("posture_keypoints")
+  confidence       Decimal?
+  source           String?
+  rulaScore        Int?          @map("rula_score")
+  rebaScore        Int?          @map("reba_score")
+  nioshIndex       Decimal?      @map("niosh_index")
+  compositeRisk    Decimal?      @map("composite_risk")
+  trafficLight     String?       @map("traffic_light")
+  reason           String?
+  sourceUploadId   String?       @map("source_upload_id")
+  sourceUpload     Upload?       @relation(fields: [sourceUploadId], references: [id])
+  ingestTime       DateTime      @default(now()) @map("ingest_time")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  @@index([warehouseId, eventTime(sort: Desc)], name: "idx_ergonomic_warehouse_time")
+  @@index([zoneId, eventTime(sort: Desc)], name: "idx_ergonomic_zone_time")
+  @@index([trafficLight, eventTime(sort: Desc)], name: "idx_ergonomic_traffic_time")
+  @@index([eventTime(sort: Desc)], name: "idx_ergonomic_event_time")
+  @@map("ergonomic_snapshots")
+}
+
+model Alert {
+  id             String    @id @default(uuid())
+  warehouseId    String    @map("warehouse_id")
+  warehouse      Warehouse @relation(fields: [warehouseId], references: [id])
+  shiftCode      String?   @map("shift_code")
+  zoneId         String?   @map("zone_id")
+  zone           Zone?     @relation(fields: [zoneId], references: [id])
+  severity       String
+  title          String
+  message        String
+  triggeredAt    DateTime  @map("triggered_at")
+  resolvedAt     DateTime? @map("resolved_at")
+  createdByRule  String    @map("created_by_rule")
+  acknowledgedBy String?   @map("acknowledged_by")
+  user           User?     @relation(fields: [acknowledgedBy], references: [id])
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@map("alerts")
+}
+
+/// TimescaleDB: Hypertable partitioned by event_time (bucket_start)
+/// Postgres fallback: Native partitioning by RANGE(bucket_start)
+/// Retention: Managed per warehouse.retention_days
+model ShiftSnapshot {
+  id               BigInt    @id @default(autoincrement())
+  warehouseId      String    @map("warehouse_id")
+  warehouse        Warehouse @relation(fields: [warehouseId], references: [id])
+  shiftCode        String    @map("shift_code")
+  eventTime        DateTime  @map("event_time")
+  bucketStart      DateTime  @map("bucket_start")
+  bucketEnd        DateTime  @map("bucket_end")
+  avgPicksPerHour  Decimal?  @map("avg_picks_per_hour")
+  totalPicks       Int?      @map("total_picks")
+  greenLocations   Int?      @map("green_locations")
+  yellowLocations  Int?      @map("yellow_locations")
+  redLocations     Int?      @map("red_locations")
+  avgCompositeRisk Decimal?  @map("avg_composite_risk")
+  anomalyScore     Decimal?  @map("anomaly_score")
+  status           String
+  ingestTime       DateTime  @default(now()) @map("ingest_time")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([warehouseId, eventTime(sort: Desc)], name: "idx_shift_warehouse_time")
+  @@index([shiftCode, eventTime(sort: Desc)], name: "idx_shift_code_time")
+  @@index([eventTime(sort: Desc)], name: "idx_shift_event_time")
+  @@map("shift_snapshots")
+}
+
+model LocationProperties {
+  id                    String   @id @default(uuid())
+  locationId            String   @unique @map("location_id")
+  aisle                 String
+  bay                   String
+  level                 String
+  ergonomicBand         String   @map("ergonomic_band")
+  distanceFromDock      Decimal  @map("distance_from_dock")
+  distanceFromMainPath  Decimal  @map("distance_from_main_path")
+  heightCm              Decimal  @map("height_cm")
+  accessibilityScore    Decimal? @map("accessibility_score")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("location_properties")
+}
+
+model SkuConstraints {
+  id                      String   @id @default(uuid())
+  skuId                   String   @unique @map("sku_id")
+  weightClass             String   @map("weight_class")
+  stackLimit              Int      @map("stack_limit")
+  equipmentNeeded         Json     @map("equipment_needed")
+  minTemperatureCelsius   Decimal? @map("min_temperature_celsius")
+  maxTemperatureCelsius   Decimal? @map("max_temperature_celsius")
+  hazmatClass             String?  @map("hazmat_class")
+  incompatibleWith        Json?    @map("incompatible_with")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("sku_constraints")
+}
+
+model ServiceRules {
+  id                String   @id @default(uuid())
+  warehouseId       String   @unique @map("warehouse_id")
+  clientPriorities  Json     @map("client_priorities")
+  skuFamilies       Json     @map("sku_families")
+  laneAffinities    Json     @map("lane_affinities")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("service_rules")
+}
+
+model MoveRecommendation {
+  id                String   @id @default(uuid())
+  warehouseId       String   @map("warehouse_id")
+  skuId             String   @map("sku_id")
+  skuCode           String   @map("sku_code")
+  fromLocationId    String   @map("from_location_id")
+  fromLocationLabel String   @map("from_location_label")
+  toLocationId      String   @map("to_location_id")
+  toLocationLabel   String   @map("to_location_label")
+  currentScore      Json     @map("current_score")
+  proposedScore     Json     @map("proposed_score")
+  scoreImprovement  Decimal  @map("score_improvement")
+  impactBreakdown   Json     @map("impact_breakdown")
+  roi               Decimal
+  priority          String
+  reasoning         String?
+  status            String   @default("pending")
+  implementedAt     DateTime? @map("implemented_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([warehouseId, createdAt(sort: Desc)])
+  @@index([priority, roi(sort: Desc)])
+  @@index([status])
+  @@map("move_recommendations")
+}
+
+enum MovePlanType {
+  NIGHTLY
+  IN_SHIFT_SPIKE
+  EMERGENCY
+  OPTIMIZATION
+}
+
+enum MoveStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+model MovePlan {
+  id                    String       @id @default(uuid())
+  warehouseId           String       @map("warehouse_id")
+  planType              MovePlanType @map("plan_type")
+  priorityRank          Int          @map("priority_rank")
+  skuId                 String       @map("sku_id")
+  skuCode               String       @map("sku_code")
+  fromLocationId        String       @map("from_location_id")
+  fromLocationLabel     String       @map("from_location_label")
+  toLocationId          String       @map("to_location_id")
+  toLocationLabel       String       @map("to_location_label")
+  quantity              Json
+  effortMinutes         Int          @map("effort_minutes")
+  expectedGain          Json         @map("expected_gain")
+  reasoning             String
+  status                MoveStatus   @default(PENDING)
+  scheduledFor          DateTime?    @map("scheduled_for")
+  startedAt             DateTime?    @map("started_at")
+  completedAt           DateTime?    @map("completed_at")
+  completedBy           String?      @map("completed_by")
+  actualImpact          Json?        @map("actual_impact")
+  notes                 String?
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+
+  @@index([warehouseId, createdAt(sort: Desc)])
+  @@index([status, priorityRank])
+  @@index([planType, status])
+  @@index([scheduledFor])
+  @@map("move_plans")
+}
+
+model OrderHistory {
+  id             String   @id @default(uuid())
+  warehouseId    String   @map("warehouse_id")
+  skuId          String   @map("sku_id")
+  skuCode        String   @map("sku_code")
+  locationId     String   @map("location_id")
+  clientId       String?  @map("client_id")
+  orderDate      DateTime @map("order_date")
+  orderHour      Int      @map("order_hour")
+  quantity       Int
+  pickTime       Decimal? @map("pick_time")
+  travelDistance Decimal? @map("travel_distance")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([warehouseId, orderDate(sort: Desc)])
+  @@index([skuId, orderDate(sort: Desc)])
+  @@index([locationId, orderDate(sort: Desc)])
+  @@map("order_history")
+}
+
+model SpikeAlert {
+  id                String    @id @default(uuid())
+  warehouseId       String    @map("warehouse_id")
+  skuId             String    @map("sku_id")
+  skuCode           String    @map("sku_code")
+  currentLocationId String    @map("current_location_id")
+  detectedAt        DateTime  @map("detected_at")
+  baselineFrequency Decimal   @map("baseline_frequency")
+  currentFrequency  Decimal   @map("current_frequency")
+  spikeMultiplier   Decimal   @map("spike_multiplier")
+  suggestedMoveId   String?   @map("suggested_move_id")
+  acknowledgedAt    DateTime? @map("acknowledged_at")
+  resolvedAt        DateTime? @map("resolved_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([warehouseId, detectedAt(sort: Desc)])
+  @@index([resolvedAt])
+  @@map("spike_alerts")
+}
+
+model ClarityEvent {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  actor     String?
+  context   String?
+  source    String?
+  type      String
+  payload   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("clarity_events")
+}
+
+model ClarityMetric {
+  id              String   @id @default(uuid())
+  userId          String?  @map("user_id")
+  scope           String?  // warehouse | zone | user
+  scopeId         String?
+  clarityScore    Decimal? @map("clarity_score")
+  overloadRisk    Decimal? @map("overload_risk")
+  ergonomicRisk   Decimal? @map("ergonomic_risk")
+  stabilityIndex  Decimal? @map("stability_index")
+  snapshot        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([scope, scopeId, createdAt(sort: Desc)])
+  @@map("clarity_metrics")
+}
+
+model ClarityPlaybook {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  title     String?
+  audience  String?
+  stepsJson Json?
+  config    Json
+  createdAt DateTime @default(now()) @map("created_at")
+  guidances ClarityGuidance[]
+
+  @@map("clarity_playbooks")
+}
+
+model VisionSession {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now()) @map("created_at")
+  createdBy   String?  @map("created_by")
+  imagePath   String   @map("image_path")
+  warehouseId String   @map("warehouse_id")
+  status      String   @default("draft")
+  notes       String?
+
+  pickfaces   VisionPickface[]
+
+  @@index([warehouseId, createdAt(sort: Desc)])
+  @@map("vision_sessions")
+}
+
+model VisionPickface {
+  id           String   @id @default(uuid())
+  sessionId    String   @map("session_id")
+  locationCode String   @map("location_code")
+  sku          String
+  x            Decimal
+  y            Decimal
+  width        Decimal
+  height       Decimal
+
+  session VisionSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+  @@map("vision_pickfaces")
+}
+
+model ClarityGuidance {
+  id          String          @id @default(uuid())
+  userId      String?         @map("user_id")
+  playbookId  String?         @map("playbook_id")
+  playbook    ClarityPlaybook? @relation(fields: [playbookId], references: [id])
+  actions     Json
+  rationale   String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("clarity_guidance")
+}

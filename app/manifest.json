@@ -1,0 +1,7 @@
+{
+  "name": "RealityLens AR",
+  "short_name": "RealityLens",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait"
+}

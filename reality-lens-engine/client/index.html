@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>RealityLens Universal AR</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div
+      id="hud"
+      style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        gap: 8px;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.4);
+        color: #fff;
+        font: 12px/1.2 monospace;
+      "
+    >
+      <button id="startAR">START AR</button>
+      <select id="modeSelect">
+        <option value="architect">Architect</option>
+        <option value="debug">Debug</option>
+        <option value="clarity">Clarity</option>
+      </select>
+      <span id="nodeCount">Nodes: 0</span>
+      <span id="status">Idle</span>
+    </div>
+    <canvas id="xr-canvas"></canvas>
+    <script src="js/modes.js"></script>
+    <script src="js/nodes.js"></script>
+    <script src="js/gesture.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/webxr-adapter.js"></script>
+    <script src="js/xr-engine.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

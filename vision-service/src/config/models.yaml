@@ -1,0 +1,81 @@
+pose_estimation:
+  model_name: "movenet_singlepose_lightning"
+  version: "1.0.0"
+  framework: "onnx"
+  path: "models/movenet_lightning.onnx"
+  input_size: [192, 192]
+  confidence_threshold: 0.3
+  num_keypoints: 17
+  keypoint_names:
+    - "nose"
+    - "left_eye"
+    - "right_eye"
+    - "left_ear"
+    - "right_ear"
+    - "left_shoulder"
+    - "right_shoulder"
+    - "left_elbow"
+    - "right_elbow"
+    - "left_wrist"
+    - "right_wrist"
+    - "left_hip"
+    - "right_hip"
+    - "left_knee"
+    - "right_knee"
+    - "left_ankle"
+    - "right_ankle"
+  performance:
+    latency_p50_ms: 15
+    latency_p95_ms: 25
+    latency_p99_ms: 35
+    throughput_fps: 60
+  metadata:
+    task: "single_person_pose_estimation"
+    sha256: "placeholder_will_be_computed_on_download"
+    source: "TensorFlow Hub / Google Research"
+    license: "Apache 2.0"
+
+inference:
+  device: "auto"
+  num_threads: 4
+  batch_size: 1
+  warmup_iterations: 3
+
+ergonomic_thresholds:
+  neck_flexion:
+    low: 20
+    medium: 45
+    high: 60
+  trunk_flexion:
+    low: 20
+    medium: 45
+    high: 60
+  shoulder_abduction:
+    low: 45
+    medium: 90
+    high: 135
+  elbow_flexion:
+    low: 60
+    medium: 100
+    high: 140
+  reach_distance_ratio:
+    low: 0.5
+    medium: 0.75
+    high: 0.9
+  asymmetry_threshold: 15
+
+risk_scoring:
+  reba_weights:
+    neck: 0.20
+    trunk: 0.25
+    legs: 0.15
+    upper_arm: 0.15
+    lower_arm: 0.10
+    wrist: 0.10
+    load: 0.05
+  risk_levels:
+    negligible: [0, 20]
+    low: [21, 40]
+    medium: [41, 60]
+    high: [61, 80]
+    very_high: [81, 100]

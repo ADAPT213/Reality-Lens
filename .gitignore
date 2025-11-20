@@ -1,0 +1,43 @@
+# Node
+node_modules/
+.npmrc
+pnpm-lock.yaml
+npm-debug.log*
+yarn.lock
+
+# Build outputs
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Env
+.env
+.env.*
+backend/.env
+vision-service/.env
+frontend/.env.local
+
+# Python
+__pycache__/
+.venv/
+.env/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Docker
+**/.dockerignore
+
+# Logs
+logs/
+*.log

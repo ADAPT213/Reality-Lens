@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+  reality-lens:
+    build: .
+    image: reality-lens-engine:latest
+    container_name: reality-lens-engine
+    ports:
+      - "8082:80"
+    restart: unless-stopped

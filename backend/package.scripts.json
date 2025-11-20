@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "dev": "node smartpick-server.js",
+    "start": "node smartpick-server.js",
+    "build": "echo 'No build step for Express server'",
+    "test": "node test-intelligence-engine.js && node test-dexatronix.js",
+    "lint": "echo 'Linting skipped for now'",
+    "health": "node -e \"require('http').get('http://localhost:4010/api/health', r => r.on('data', d => console.log(d.toString())))\""
+  }
+}

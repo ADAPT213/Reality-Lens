@@ -1,0 +1,29 @@
+﻿{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "noEmit": false,
+    "noImplicitAny": false
+  },
+  "include": [
+    "src/main.ts",
+    "src/app.module.ts",
+
+    "src/common/**/*.ts",
+    "src/clarity/**/*.ts",
+    "src/vision/**/*.ts",
+    "src/websocket/**/*.ts",
+    "src/copilot/**/*.ts",
+    "src/slotting/**/*.ts",
+    "src/ingest/**/*.ts",
+    "src/health/**/*.ts"
+  ],
+  "exclude": [
+    "src/auth/**",
+    "src/alerts/**",
+    "src/workers/**",
+    "src/**/*.spec.ts",
+    "src/**/__tests__/**",
+    "node_modules"
+  ]
+}

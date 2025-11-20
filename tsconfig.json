@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "paths": {
+      "*": ["*"],
+      "webar/*": ["webar/*"],
+      "engine/*": ["engine/*"],
+      "warehouse/*": ["warehouse/*"]
+    }
+  }
+}

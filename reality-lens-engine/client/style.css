@@ -1,0 +1,17 @@
+body,
+html {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+}
+button,
+select {
+  font-size: 12px;
+}
+#xr-canvas {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}

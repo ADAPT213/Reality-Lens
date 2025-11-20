@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Environment
+.env
+.env.local
+
+# Models (ONNX files are large, don't commit them)
+models/*.onnx
+models/*.pb
+models/*.h5
+models/*.pt
+models/*.pth
+
+# Keep README and .gitkeep
+!models/README.md
+!models/.gitkeep
+
+# Temporary files
+*.tmp
+temp/
+tmp/
+
+# Logs
+*.log
+logs/
