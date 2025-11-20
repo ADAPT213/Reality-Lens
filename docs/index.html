@@ -2,100 +2,166 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>RealityLens WebAR v2 — Markerless AR</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>RealityLens AR</title>
+  <meta name="viewport" content="width=device-width, maximum-scale=1">
 
-  <!-- A-Frame + AR.js (markerless) -->
+  <!-- AFRAME + ARJS -->
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ar-js-org@3.4.5/aframe/build/aframe-ar-nft.js"></script>
 
-  <!-- Gesture controls -->
+  <!-- Gesture movement -->
   <script src="https://cdn.jsdelivr.net/gh/rdub80/aframe-gesture-component/dist/aframe-gesture-component.min.js"></script>
 
+  <!-- TensorFlow AI + COCO Detection -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.18.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+  <!-- Websocket dashboard -->
+  <script src="ws.js"></script>
+
+  <!-- QR Scanner -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
   <style>
-    body, html { margin: 0; padding: 0; background: #000; overflow: hidden; }
-    #ui-bar {
-      position: fixed; top: 0; left: 0; right: 0;
-      background: rgba(0,0,0,0.6); padding: 10px;
-      color: #fff; font-family: Arial; z-index: 10;
-      display: flex; justify-content: space-between; align-items: center;
+    body, html { margin: 0; overflow: hidden; background: #000; }
+    #ui {
+      position: fixed; top: 0; left: 0; width: 100%;
+      display: flex; justify-content: space-between;
+      padding: 8px; background: rgba(0,0,0,0.5); color: #fff;
+      font-family: Arial; z-index: 20;
     }
     .btn {
-      padding: 6px 12px; background: #00a8ff; border-radius: 5px;
-      color: #000; font-weight: bold; cursor: pointer;
+      padding: 6px 12px; background: #00a8ff; color: #000;
+      cursor: pointer; border-radius: 4px; font-weight: bold;
+    }
+    #qr-area {
+      width: 280px; height: 280px; position: fixed;
+      bottom: 20px; left: 20px; z-index: 20;
+      background: rgba(0,0,0,0.3); display: none;
     }
   </style>
-
 </head>
+
 <body>
 
-<div id="ui-bar">
-  <span>RealityLens AR v2 — Markerless</span>
-  <div class="btn" onclick="clearObjects()">Clear All</div>
+<div id="ui">
+  <div>RealityLens AR — Full Build</div>
+  <div style="display:flex; gap:10px;">
+    <div class="btn" onclick="scanQR()">Scan QR</div>
+    <div class="btn" onclick="clearObjects()">Clear</div>
+  </div>
 </div>
 
-<a-scene
-  embedded
-  renderer="logarithmicDepthBuffer: true; antialias: true;"
-  xr-mode-ui="enabled: false"
-  arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;">
+<div id="qr-area"></div>
 
-  <a-entity camera></a-entity>
+<a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false"
+  renderer="antialias:true; logarithmicDepthBuffer:true;">
 
-  <!-- Tap placement handler -->
-  <a-entity id="tapHandler"></a-entity>
+  <a-entity camera look-controls></a-entity>
 
-  <!-- Container for spawned objects -->
-  <a-entity id="objectContainer"></a-entity>
+  <!-- Raycaster -->
+  <a-entity id="raycaster"
+            raycaster="objects: .surface; showLine:true;"
+            cursor="rayOrigin: mouse;"></a-entity>
 
+  <!-- Invisible surface -->
+  <a-plane class="surface"
+           rotation="-90 0 0"
+           width="100" height="100"
+           opacity="0.0"></a-plane>
+
+  <a-entity id="objects"></a-entity>
 </a-scene>
 
 <script>
-// Global reference for spawned content
-const container = document.querySelector('#objectContainer');
 
-// Listen for taps: place cube at camera-facing plane
-document.addEventListener('click', function (e) {
-    placePickFaceCube();
+// ------------------------------------------------------------
+// Load warehouse data
+// ------------------------------------------------------------
+let warehouseData = {};
+fetch("data.json").then(r => r.json()).then(j => warehouseData = j);
+
+// ------------------------------------------------------------
+// Load AI model
+// ------------------------------------------------------------
+let aiModel = null;
+cocoSsd.load().then(m => aiModel = m);
+
+// ------------------------------------------------------------
+// Place bin model
+// ------------------------------------------------------------
+function placeBin(point) {
+  const bin = document.createElement('a-entity');
+  bin.setAttribute('gltf-model', 'models/bin.gltf');
+  bin.setAttribute('scale', '0.2 0.2 0.2');
+  bin.setAttribute('position', `${point.x} ${point.y} ${point.z}`);
+  bin.setAttribute('gesture-handler', '');
+
+  const label = document.createElement('a-entity');
+  label.setAttribute('text',
+    `value: ${warehouseData["B01"].sku} — ${warehouseData["B01"].desc};
+     color: #FFF; align: center; width: 3`);
+  label.setAttribute('position', '0 0.6 0');
+  bin.appendChild(label);
+
+  document.querySelector('#objects').appendChild(bin);
+
+  // send placement to dashboard
+  broadcastPlacement(point.x, point.y, point.z);
+}
+
+// ------------------------------------------------------------
+// On tap
+// ------------------------------------------------------------
+document.addEventListener('click', () => {
+  const ray = document.querySelector('#raycaster').components.raycaster;
+  if (!ray.intersections.length) return;
+  placeBin(ray.intersections[0].point);
 });
 
-// Spawn a 3D cube at fixed distance from camera
-function placePickFaceCube() {
-    const camera = document.querySelector('[camera]');
-    const cam = camera.object3D;
-
-    // Create cube
-    const cube = document.createElement('a-box');
-    cube.setAttribute('color', '#00A8FF');
-    cube.setAttribute('depth', '0.25');
-    cube.setAttribute('height', '0.25');
-    cube.setAttribute('width', '0.25');
-    cube.setAttribute('gesture-handler', 'minScale:0.2; maxScale:4');
-
-    // Position: 1m forward from camera
-    const direction = new THREE.Vector3();
-    cam.getWorldDirection(direction);
-    const camPos = new THREE.Vector3();
-    cam.getWorldPosition(camPos);
-    const spawnPos = camPos.add(direction.multiplyScalar(1.0));
-
-    cube.object3D.position.copy(spawnPos);
-
-    // Add floating label
-    const label = document.createElement('a-entity');
-    label.setAttribute('text', 'value: PICK FACE; color: #FFF; align: center; width: 2');
-    label.setAttribute('position', '0 0.4 0');
-    cube.appendChild(label);
-
-    container.appendChild(cube);
-}
-
-// Destroy all objects
+// ------------------------------------------------------------
+// Clear objects
+// ------------------------------------------------------------
 function clearObjects() {
-    while (container.firstChild) {
-        container.removeChild(container.firstChild);
-    }
+  const c = document.querySelector('#objects');
+  while (c.firstChild) c.removeChild(c.firstChild);
 }
+
+// ------------------------------------------------------------
+// QR Scanner
+// ------------------------------------------------------------
+function scanQR() {
+  const area = document.getElementById("qr-area");
+  area.style.display = "block";
+
+  const qr = new Html5Qrcode("qr-area");
+
+  qr.start({ facingMode: "environment" }, { fps:10, qrbox:250 },
+    message => {
+      localStorage.setItem("realitylens-anchor", message);
+      alert("Anchor Saved: " + message);
+      qr.stop();
+      area.style.display = "none";
+    }
+  );
+}
+
+// ------------------------------------------------------------
+// AI Detection Loop
+// ------------------------------------------------------------
+setInterval(async () => {
+  if (!aiModel) return;
+  const video = document.querySelector("video");
+  if (!video) return;
+
+  const preds = await aiModel.detect(video);
+  preds.forEach(p => {
+    if (p.class === "box" || p.class === "suitcase") {
+      console.log("PACKAGE FOUND", p.bbox);
+    }
+  });
+}, 1200);
+
 </script>
 
 </body>

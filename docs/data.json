@@ -1,0 +1,4 @@
+{
+  "B01": { "sku": "SKU-1001", "qty": 12, "desc": "Hex Bolts" },
+  "B02": { "sku": "SKU-1429", "qty": 8,  "desc": "Steel Washers" }
+}

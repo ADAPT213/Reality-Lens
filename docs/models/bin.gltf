@@ -1,0 +1,7 @@
+{
+  "asset": { "version": "2.0" },
+  "scenes":[{ "nodes":[0] }],
+  "nodes":[{ "mesh":0 }],
+  "meshes":[{ "primitives":[{ "attributes":{ "POSITION":0 }, "indices":1 }] }],
+  "buffers":[], "bufferViews":[], "accessors":[]
+}
