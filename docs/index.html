@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>RealityLens WebAR v2 — Markerless AR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <!-- A-Frame + AR.js (markerless) -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ar-js-org@3.4.5/aframe/build/aframe-ar-nft.js"></script>
+
+  <!-- Gesture controls -->
+  <script src="https://cdn.jsdelivr.net/gh/rdub80/aframe-gesture-component/dist/aframe-gesture-component.min.js"></script>
+
+  <style>
+    body, html { margin: 0; padding: 0; background: #000; overflow: hidden; }
+    #ui-bar {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.6); padding: 10px;
+      color: #fff; font-family: Arial; z-index: 10;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .btn {
+      padding: 6px 12px; background: #00a8ff; border-radius: 5px;
+      color: #000; font-weight: bold; cursor: pointer;
+    }
+  </style>
+
+</head>
+<body>
+
+<div id="ui-bar">
+  <span>RealityLens AR v2 — Markerless</span>
+  <div class="btn" onclick="clearObjects()">Clear All</div>
+</div>
+
+<a-scene
+  embedded
+  renderer="logarithmicDepthBuffer: true; antialias: true;"
+  xr-mode-ui="enabled: false"
+  arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;">
+
+  <a-entity camera></a-entity>
+
+  <!-- Tap placement handler -->
+  <a-entity id="tapHandler"></a-entity>
+
+  <!-- Container for spawned objects -->
+  <a-entity id="objectContainer"></a-entity>
+
+</a-scene>
+
+<script>
+// Global reference for spawned content
+const container = document.querySelector('#objectContainer');
+
+// Listen for taps: place cube at camera-facing plane
+document.addEventListener('click', function (e) {
+    placePickFaceCube();
+});
+
+// Spawn a 3D cube at fixed distance from camera
+function placePickFaceCube() {
+    const camera = document.querySelector('[camera]');
+    const cam = camera.object3D;
+
+    // Create cube
+    const cube = document.createElement('a-box');
+    cube.setAttribute('color', '#00A8FF');
+    cube.setAttribute('depth', '0.25');
+    cube.setAttribute('height', '0.25');
+    cube.setAttribute('width', '0.25');
+    cube.setAttribute('gesture-handler', 'minScale:0.2; maxScale:4');
+
+    // Position: 1m forward from camera
+    const direction = new THREE.Vector3();
+    cam.getWorldDirection(direction);
+    const camPos = new THREE.Vector3();
+    cam.getWorldPosition(camPos);
+    const spawnPos = camPos.add(direction.multiplyScalar(1.0));
+
+    cube.object3D.position.copy(spawnPos);
+
+    // Add floating label
+    const label = document.createElement('a-entity');
+    label.setAttribute('text', 'value: PICK FACE; color: #FFF; align: center; width: 2');
+    label.setAttribute('position', '0 0.4 0');
+    cube.appendChild(label);
+
+    container.appendChild(cube);
+}
+
+// Destroy all objects
+function clearObjects() {
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+}
+</script>
+
+</body>
+</html>
